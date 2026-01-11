@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FitTracker">
+    <title>FitTracker Pro</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(180deg, #0a0a1a 0%, #1a1a2a 100%); color: #eee; min-height: 100vh; padding-bottom: 90px; overflow-x: hidden; }
+      
+      .header { background: linear-gradient(135deg, #1a1a3a 0%, #0a0a1a 100%); padding: 25px 20px 20px; position: sticky; top: 0; z-index: 100; border-bottom: 2px solid #2a2a4a; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+      .header h1 { font-size: 1.6em; color: #00d4ff; margin-bottom: 8px; font-weight: 700; letter-spacing: -0.5px; }
+      .header .subtitle { font-size: 0.9em; color: #888; font-weight: 400; }
+      .week-badge { display: inline-block; background: linear-gradient(135deg, #00d4ff, #00ff88); color: #000; padding: 4px 12px; border-radius: 15px; font-size: 0.75em; font-weight: bold; margin-left: 10px; box-shadow: 0 2px 8px rgba(0,212,255,0.3); }
+      
+      .progress-container { padding: 20px; background: rgba(26,26,42,0.6); backdrop-filter: blur(10px); }
+      .progress-bar { height: 10px; background: #2a2a4a; border-radius: 5px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); }
+      .progress-fill { height: 100%; background: linear-gradient(90deg, #00d4ff 0%, #00ff88 100%); transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 10px rgba(0,212,255,0.5); }
+      .progress-text { display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.85em; color: #aaa; font-weight: 500; }
+      
+      .tabs { display: flex; background: rgba(26,26,42,0.8); backdrop-filter: blur(10px); border-bottom: 1px solid #2a2a4a; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .tabs::-webkit-scrollbar { display: none; }
+      .tab { flex: 1; min-width: 75px; padding: 14px 10px; text-align: center; color: #888; font-size: 0.9em; font-weight: 600; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.3s ease; }
+      .tab.active { color: #00d4ff; border-bottom-color: #00d4ff; background: rgba(0,212,255,0.08); }
+      .tab:active { transform: scale(0.95); }
+      
+      .content { padding: 20px 15px; }
+      .week-content { display: none; animation: fadeIn 0.4s ease; }
+      .week-content.active { display: block; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      
+      .day-card { background: linear-gradient(145deg, #1a1a2a, #15151f); border-radius: 16px; margin-bottom: 18px; overflow: hidden; border: 1px solid #2a2a4a; box-shadow: 0 4px 15px rgba(0,0,0,0.4); transition: transform 0.2s; }
+      .day-card:active { transform: scale(0.98); }
+      .day-header { padding: 16px 18px; background: linear-gradient(135deg, #2a2a4a 0%, #1f1f35 100%); display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+      .day-title { font-weight: 700; color: #fff; font-size: 1em; letter-spacing: -0.3px; }
+      .day-meta { display: flex; align-items: center; gap: 12px; }
+      .day-type { font-size: 0.75em; color: #999; text-transform: uppercase; letter-spacing: 0.5px; }
+      .day-progress { font-size: 0.8em; color: #00d4ff; font-weight: bold; background: rgba(0,212,255,0.1); padding: 3px 8px; border-radius: 10px; }
+      .chevron { color: #888; transition: transform 0.3s ease; font-size: 0.9em; }
+      .day-card.collapsed .chevron { transform: rotate(-90deg); }
+      .day-card.collapsed .day-body { display: none; }
+      
+      .day-body { padding: 18px; }
+      .exercise-row { display: flex; align-items: flex-start; padding: 14px 0; border-bottom: 1px solid rgba(42,42,74,0.5); gap: 12px; }
+      .exercise-row:last-child { border-bottom: none; }
+      .exercise-check { width: 28px; height: 28px; min-width: 28px; border-radius: 50%; border: 2.5px solid #3a3a6a; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; margin-top: 2px; }
+      .exercise-check:active { transform: scale(0.9); }
+      .exercise-check.checked { background: linear-gradient(135deg, #00d4ff, #00b8e6); border-color: #00d4ff; box-shadow: 0 0 12px rgba(0,212,255,0.5); }
+      .exercise-check.checked::after { content: "✓"; color: #000; font-weight: bold; font-size: 16px; }
+      .exercise-info { flex: 1; min-width: 0; }
+      .exercise-name { font-size: 0.95em; color: #fff; margin-bottom: 4px; font-weight: 600; }
+      .exercise-target { font-size: 0.8em; color: #999; margin-bottom: 4px; }
+      .exercise-rest { font-size: 0.75em; color: #00ff88; background: rgba(0,255,136,0.1); padding: 2px 8px; border-radius: 8px; display: inline-block; margin-top: 4px; }
+      .exercise-inputs { display: flex; gap: 6px; flex-shrink: 0; align-items: flex-start; margin-top: 2px; }
+      .exercise-inputs input { width: 55px; padding: 8px 6px; background: #0a0a1a; border: 2px solid #3a3a6a; color: #fff; border-radius: 8px; font-size: 0.9em; text-align: center; font-weight: 600; transition: border-color 0.3s; }
+      .exercise-inputs input:focus { border-color: #00d4ff; outline: none; box-shadow: 0 0 8px rgba(0,212,255,0.3); }
+      
+      .cardio-card .day-header { background: linear-gradient(135deg, #1a3a2a 0%, #2a2a4a 100%); }
+      .rest-card .day-header { background: linear-gradient(135deg, #3a1a3a 0%, #2a2a4a 100%); }
+      
+      .mobility-section { margin-top: 18px; padding-top: 18px; border-top: 2px solid #2a2a4a; }
+      .mobility-header { color: #00ff88; font-size: 0.9em; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; font-weight: 700; }
+      .mobility-list { list-style: none; }
+      .mobility-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(42,42,74,0.3); }
+      .mobility-item:last-child { border-bottom: none; }
+      .mobility-item span { font-size: 0.9em; color: #ddd; }
+      
+      .notes-input { width: 100%; padding: 12px; background: #0a0a1a; border: 2px solid #3a3a6a; color: #fff; border-radius: 10px; font-size: 0.9em; margin-top: 12px; resize: none; min-height: 60px; transition: border-color 0.3s; font-family: inherit; }
+      .notes-input:focus { border-color: #00d4ff; outline: none; box-shadow: 0 0 8px rgba(0,212,255,0.3); }
+      .notes-input::placeholder { color: #666; }
+      
+      .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: linear-gradient(180deg, rgba(26,26,42,0.95) 0%, rgba(26,26,42,0.98) 100%); backdrop-filter: blur(20px); border-top: 1px solid #2a2a4a; display: flex; padding: 8px 0; padding-bottom: max(8px, env(safe-area-inset-bottom)); box-shadow: 0 -4px 20px rgba(0,0,0,0.5); }
+      .nav-item { flex: 1; text-align: center; padding: 10px 8px; color: #888; font-size: 0.7em; cursor: pointer; transition: all 0.2s; font-weight: 600; }
+      .nav-item.active { color: #00d4ff; }
+      .nav-item:active { transform: scale(0.95); }
+      .nav-icon { font-size: 1.6em; margin-bottom: 4px; }
+      
+      .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+      .modal.active { display: flex; animation: fadeIn 0.3s ease; }
+      .modal-content { background: linear-gradient(145deg, #1a1a2a, #15151f); border-radius: 20px; padding: 24px; max-width: 420px; width: 100%; max-height: 85vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.6); border: 1px solid #2a2a4a; }
+      .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+      .modal-title { font-size: 1.3em; color: #00d4ff; font-weight: 700; }
+      .modal-close { background: none; border: none; color: #888; font-size: 1.8em; cursor: pointer; line-height: 1; transition: color 0.2s; }
+      .modal-close:hover { color: #fff; }
+      
+      .btn { padding: 14px 24px; border-radius: 12px; font-weight: 700; cursor: pointer; border: none; font-size: 0.95em; transition: all 0.3s ease; text-align: center; }
+      .btn:active { transform: scale(0.97); }
+      .btn-primary { background: linear-gradient(135deg, #00d4ff, #00b8e6); color: #000; box-shadow: 0 4px 15px rgba(0,212,255,0.3); }
+      .btn-secondary { background: #2a2a4a; color: #fff; }
+      .btn-success { background: linear-gradient(135deg, #00ff88, #00cc6a); color: #000; box-shadow: 0 4px 15px rgba(0,255,136,0.3); }
+      .btn-block { width: 100%; margin-top: 12px; }
+      
+      .export-box { background: #0a0a1a; border: 2px solid #3a3a6a; border-radius: 10px; padding: 12px; margin: 12px 0; font-family: 'Courier New', monospace; font-size: 0.75em; max-height: 220px; overflow-y: auto; word-break: break-all; color: #0f0; }
+      
+      .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 18px 0; }
+      .stat-card { background: linear-gradient(145deg, #0a0a1a, #15151f); border-radius: 12px; padding: 18px; text-align: center; border: 1px solid #2a2a4a; }
+      .stat-value { font-size: 2em; font-weight: bold; background: linear-gradient(135deg, #00d4ff, #00ff88); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+      .stat-label { font-size: 0.8em; color: #999; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+      
+      .summary-section { margin-bottom: 24px; }
+      .summary-title { font-size: 1.05em; color: #00d4ff; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #2a2a4a; font-weight: 700; }
+      
+      .weight-tracker { margin: 15px 0; }
+      .weight-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(42,42,74,0.5); }
+      .weight-row input { width: 75px; padding: 10px; background: #0a0a1a; border: 2px solid #3a3a6a; color: #fff; border-radius: 8px; text-align: center; font-weight: 600; transition: border-color 0.3s; }
+      .weight-row input:focus { border-color: #00d4ff; outline: none; }
+      
+      .install-banner { background: linear-gradient(135deg, #00d4ff, #00ff88); color: #000; padding: 18px; margin: 15px 0; border-radius: 14px; text-align: center; box-shadow: 0 4px 20px rgba(0,212,255,0.3); }
+      .install-banner h3 { margin-bottom: 6px; font-size: 1.1em; }
+      .install-banner p { font-size: 0.9em; margin-bottom: 12px; opacity: 0.9; }
+      .install-steps { text-align: left; font-size: 0.85em; background: rgba(0,0,0,0.15); padding: 12px; border-radius: 10px; }
+      .install-steps li { margin: 6px 0; }
+      
+      @media (max-width: 380px) {
+        .exercise-inputs input { width: 48px; font-size: 0.85em; }
+        .header h1 { font-size: 1.4em; }
+        .stat-value { font-size: 1.7em; }
+      }
+    </style>
+</head>
+<body>
+    <div class="header">
+      <h1>💪 FitTracker <span class="week-badge" id="currentWeekBadge">Week 1</span></h1>
+      <div class="subtitle">Strength • Mobility • Longevity</div>
+    </div>
+    
+    <div class="progress-container">
+      <div class="progress-bar"><div class="progress-fill" id="totalProgress" style="width: 0%"></div></div>
+      <div class="progress-text">
+        <span id="completedCount">0 of 28 workouts</span>
+        <span id="progressPercent">0%</span>
+      </div>
+    </div>
+    
+    <div class="tabs">
+      <div class="tab active" onclick="showWeek(1)">Wk 1</div>
+      <div class="tab" onclick="showWeek(2)">Wk 2</div>
+      <div class="tab" onclick="showWeek(3)">Wk 3</div>
+      <div class="tab" onclick="showWeek(4)">Wk 4</div>
+      <div class="tab" onclick="showWeek(5)">Stats</div>
+    </div>
+    
+    <div class="content" id="mainContent"></div>
+    
+    <div class="bottom-nav">
+      <div class="nav-item active" onclick="showWeek(currentWeek)">
+        <div class="nav-icon">🏋️</div>
+        <div>Workouts</div>
+      </div>
+      <div class="nav-item" onclick="showStats()">
+        <div class="nav-icon">📊</div>
+        <div>Progress</div>
+      </div>
+      <div class="nav-item" onclick="showExport()">
+        <div class="nav-icon">📤</div>
+        <div>Export</div>
+      </div>
+      <div class="nav-item" onclick="showSettings()">
+        <div class="nav-icon">⚙️</div>
+        <div>Settings</div>
+      </div>
+    </div>
+    
+    <div class="modal" id="exportModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <span class="modal-title">📤 Export Progress</span>
+          <button class="modal-close" onclick="closeModal('exportModal')">&times;</button>
+        </div>
+        <p style="color:#888;font-size:0.9em;margin-bottom:15px;">Copy this data and share it to get your next 4-week program!</p>
+        <div class="export-box" id="exportData"></div>
+        <button class="btn btn-primary btn-block" onclick="copyExport()">📋 Copy to Clipboard</button>
+        <button class="btn btn-secondary btn-block" onclick="shareExport()">📱 Share</button>
+      </div>
+    </div>
+    
+    <div class="modal" id="settingsModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <span class="modal-title">⚙️ Settings</span>
+          <button class="modal-close" onclick="closeModal('settingsModal')">&times;</button>
+        </div>
+        
+        <div class="install-banner">
+          <h3>📱 Add to iPhone Home Screen</h3>
+          <p>Install this app for quick access!</p>
+          <div class="install-steps">
+            <ol>
+              <li>Tap the <strong>Share</strong> button at the bottom (square with ↑ arrow)</li>
+              <li>Scroll down and tap <strong>"Add to Home Screen"</strong></li>
+              <li>Tap <strong>"Add"</strong> in the top right</li>
+            </ol>
+          </div>
+        </div>
+        
+        <div style="margin-top:20px;">
+          <label style="color:#888;font-size:0.85em;">Start Date</label>
+          <input type="date" id="startDate" style="width:100%;padding:10px;background:#0a0a1a;border:2px solid#3a3a6a;color:#fff;border-radius:8px;margin-top:5px;">
+        </div>
+        
+        <button class="btn btn-secondary btn-block" onclick="resetProgress()" style="margin-top:20px;background:#ff4444;">🗑️ Reset All Progress</button>
+      </div>
+    </div>
+
+    <script>
+      let currentWeek = 1;
+      let data = loadData();
+      
+      const mobilityRoutine = [
+        "Cat-Cow (10 reps)",
+        "World's Greatest Stretch (5/side)",
+        "90/90 Hip Switches (10 reps)",
+        "Wall Slides (10 reps)",
+        "Deep Squat Hold (2 min)",
+        "Thread the Needle (8/side)"
+      ];
+      
+      const restTimes = {
+        main: "2-3 min",
+        unilateral: "90s-2 min",
+        accessory: "60-90s",
+        carry: "60-90s",
+        core: "60-90s",
+        cardio: "N/A",
+        mobility: "30-60s"
+      };
+      
+      const programData = {
+        1: {
+          title: "Week 1: Foundation (RPE 6-7)",
+          days: [
+            { name: "Sunday", type: "strength", title: "Strength A (Push/Squat)", exercises: [
+              { id: "w1_goblet", name: "Goblet Squat", target: "3×10", hasWeight: true, rest: "main" },
+              { id: "w1_pushup", name: "Push-ups / DB Bench", target: "3×10", hasWeight: true, rest: "main" },
+              { id: "w1_bss", name: "Bulgarian Split Squat", target: "2×8/leg", hasWeight: true, rest: "unilateral" },
+              { id: "w1_ohp", name: "DB Overhead Press", target: "3×10", hasWeight: true, rest: "main" },
+              { id: "w1_pallof", name: "Pallof Press", target: "2×10/side", hasWeight: true, rest: "core" }
+            ]},
+            { name: "Monday", type: "cardio", title: "Zone 2 + Mobility", exercises: [
+              { id: "w1_z2", name: "Zone 2 Cardio", target: "30 min", hasWeight: false, rest: "cardio" },
+            ]},
+            { name: "Tuesday", type: "strength", title: "Strength B (Pull/Hinge)", exercises: [
+              { id: "w1_rdl", name: "Romanian Deadlift", target: "3×10", hasWeight: true, rest: "main" },
+              { id: "w1_pulldown", name: "Lat Pulldown / Pull-ups", target: "3×8-10", hasWeight: true, rest: "main" },
+              { id: "w1_slrdl", name: "Single-Leg RDL", target: "2×8/leg", hasWeight: true, rest: "unilateral" },
+              { id: "w1_row", name: "DB Row", target: "3×10/arm", hasWeight: true, rest: "main" },
+              { id: "w1_deadbug", name: "Dead Bug", target: "2×8/side", hasWeight: false, rest: "core" }
+            ]},
+            { name: "Wednesday", type: "rest", title: "Active Recovery", exercises: [
+              { id: "w1_walk", name: "Easy Walk", target: "20 min", hasWeight: false, rest: "cardio" },
+              { id: "w1_foam", name: "Foam Rolling", target: "10 min", hasWeight: false, rest: "mobility" }
+            ]},
+            { name: "Thursday", type: "strength", title: "Strength C (Full Body)", exercises: [
+              { id: "w1_tgu", name: "Turkish Get-up", target: "2×3/side", hasWeight: true, rest: "unilateral" },
+              { id: "w1_farmer", name: "Farmer's Carry", target: "3×40 sec", hasWeight: true, rest: "carry" },
+              { id: "w1_stepup", name: "Step-ups", target: "3×8/leg", hasWeight: true, rest: "unilateral" },
+              { id: "w1_facepull", name: "Face Pulls", target: "3×15", hasWeight: true, rest: "accessory" },
+              { id: "w1_suitcase", name: "Suitcase Carry", target: "2×30s/side", hasWeight: true, rest: "carry" }
+            ]},
+            { name: "Friday", type: "cardio", title: "Long Zone 2", exercises: [
+              { id: "w1_longz2", name: "Ruck / Hike / Bike", target: "45-60 min", hasWeight: false, rest: "cardio" }
+            ]},
+            { name: "Saturday", type: "rest", title: "Rest Day", exercises: [] }
+          ]
+        },
+        2: {
+          title: "Week 2: Build Volume (RPE 7)",
+          days: [
+            { name: "Sunday", type: "strength", title: "Strength A (Push/Squat)", exercises: [
+              { id: "w2_goblet", name: "Goblet Squat", target: "4×10", hasWeight: true, rest: "main" },
+              { id: "w2_pushup", name: "Push-ups / DB Bench", target: "3×12", hasWeight: true, rest: "main" },
+              { id: "w2_bss", name: "Bulgarian Split Squat", target: "3×8/leg", hasWeight: true, rest: "unilateral" },
+              { id: "w2_ohp", name: "DB Overhead Press", target: "3×12", hasWeight: true, rest: "main" },
+              { id: "w2_pallof", name: "Pallof Press", target: "3×10/side", hasWeight: true, rest: "core" }
+            ]},
+            { name: "Monday", type: "cardio", title: "Zone 2 + Mobility", exercises: [
+              { id: "w2_z2", name: "Zone 2 Cardio", target: "35 min", hasWeight: false, rest: "cardio" },
+            ]},
+            { name: "Tuesday", type: "strength", title: "Strength B (Pull/Hinge)", exercises: [
+              { id: "w2_rdl", name: "Romanian Deadlift", target: "4×10", hasWeight: true, rest: "main" },
+              { id: "w2_pulldown", name: "Lat Pulldown / Pull-ups", target: "4×8-10", hasWeight: true, rest: "main" },
+              { id: "w2_slrdl", name: "Single-Leg RDL", target: "3×8/leg", hasWeight: true, rest: "unilateral" },
+              { id: "w2_row", name: "DB Row", target: "4×10/arm", hasWeight: true, rest: "main" },
+              { id: "w2_deadbug", name: "Dead Bug", target: "3×10/side", hasWeight: false, rest: "core" }
+            ]},
+            { name: "Wednesday", type: "rest", title: "Active Recovery", exercises: [
+              { id: "w2_walk", name: "Easy Walk", target: "20 min", hasWeight: false, rest: "cardio" },
+              { id: "w2_foam", name: "Foam Rolling", target: "10 min", hasWeight: false, rest: "mobility" }
+            ]},
+            { name: "Thursday", type: "strength", title: "Strength C (Full Body)", exercises: [
+              { id: "w2_tgu", name: "Turkish Get-up", target: "3×3/side", hasWeight: true, rest: "unilateral" },
+              { id: "w2_farmer", name: "Farmer's Carry", target: "3×50 sec", hasWeight: true, rest: "carry" },
+              { id: "w2_stepup", name: "Step-ups", target: "3×10/leg", hasWeight: true, rest: "unilateral" },
+              { id: "w2_facepull", name: "Face Pulls", target: "3×15", hasWeight: true, rest: "accessory" },
+              { id: "w2_suitcase", name: "Suitcase Carry", target: "3×30s/side", hasWeight: true, rest: "carry" }
+            ]},
+            { name: "Friday", type: "cardio", title: "Long Zone 2", exercises: [
+              { id: "w2_longz2", name: "Ruck / Hike / Bike", target: "50-60 min", hasWeight: false, rest: "cardio" }
+            ]},
+            { name: "Saturday", type: "rest", title: "Rest Day", exercises: [] }
+          ]
+        },
+        3: {
+          title: "Week 3: Push Intensity (RPE 8)",
+          days: [
+            { name: "Sunday", type: "strength", title: "Strength A (Push/Squat)", exercises: [
+              { id: "w3_goblet", name: "Goblet Squat (+5-10%)", target: "4×10", hasWeight: true, rest: "main" },
+              { id: "w3_pushup", name: "Push-ups / DB Bench (+5%)", target: "4×10", hasWeight: true, rest: "main" },
+              { id: "w3_bss", name: "Bulgarian Split Squat", target: "3×10/leg", hasWeight: true, rest: "unilateral" },
+              { id: "w3_ohp", name: "DB Overhead Press (+5%)", target: "4×10", hasWeight: true, rest: "main" },
+              { id: "w3_pallof", name: "Pallof Press", target: "3×12/side", hasWeight: true, rest: "core" }
+            ]},
+            { name: "Monday", type: "cardio", title: "Zone 2 + Mobility", exercises: [
+              { id: "w3_z2", name: "Zone 2 Cardio", target: "40 min", hasWeight: false, rest: "cardio" },
+            ]},
+            { name: "Tuesday", type: "strength", title: "Strength B (Pull/Hinge)", exercises: [
+              { id: "w3_rdl", name: "Romanian Deadlift (+5-10%)", target: "4×10", hasWeight: true, rest: "main" },
+              { id: "w3_pulldown", name: "Lat Pulldown / Pull-ups", target: "4×10", hasWeight: true, rest: "main" },
+              { id: "w3_slrdl", name: "Single-Leg RDL", target: "3×10/leg", hasWeight: true, rest: "unilateral" },
+              { id: "w3_row", name: "DB Row (+5%)", target: "4×10/arm", hasWeight: true, rest: "main" },
+              { id: "w3_deadbug", name: "Dead Bug", target: "3×10/side", hasWeight: false, rest: "core" }
+            ]},
+            { name: "Wednesday", type: "cardio", title: "Intervals + Mobility", exercises: [
+              { id: "w3_warmup", name: "Warm-up", target: "5 min", hasWeight: false, rest: "cardio" },
+              { id: "w3_intervals", name: "30s hard / 90s easy × 6", target: "12 min", hasWeight: false, rest: "cardio" },
+              { id: "w3_cooldown", name: "Cool-down", target: "5 min", hasWeight: false, rest: "cardio" },
+            ]},
+            { name: "Thursday", type: "strength", title: "Strength C (Full Body)", exercises: [
+              { id: "w3_tgu", name: "Turkish Get-up", target: "3×4/side", hasWeight: true, rest: "unilateral" },
+              { id: "w3_farmer", name: "Farmer's Carry (+weight)", target: "4×50 sec", hasWeight: true, rest: "carry" },
+              { id: "w3_stepup", name: "Step-ups (+weight)", target: "4×10/leg", hasWeight: true, rest: "unilateral" },
+              { id: "w3_facepull", name: "Face Pulls", target: "4×15", hasWeight: true, rest: "accessory" },
+              { id: "w3_suitcase", name: "Suitcase Carry", target: "3×40s/side", hasWeight: true, rest: "carry" }
+            ]},
+            { name: "Friday", type: "cardio", title: "Long Zone 2", exercises: [
+              { id: "w3_longz2", name: "Ruck / Hike / Bike", target: "60 min", hasWeight: false, rest: "cardio" }
+            ]},
+            { name: "Saturday", type: "rest", title: "Rest Day", exercises: [] }
+          ]
+        },
+        4: {
+          title: "Week 4: Deload (RPE 5-6)",
+          days: [
+            { name: "Sunday", type: "strength", title: "Strength A (Light)", exercises: [
+              { id: "w4_goblet", name: "Goblet Squat (-25%)", target: "2×10", hasWeight: true, rest: "main" },
+              { id: "w4_pushup", name: "Push-ups / DB Bench (-25%)", target: "2×10", hasWeight: true, rest: "main" },
+              { id: "w4_bss", name: "Bulgarian Split Squat", target: "2×8/leg", hasWeight: true, rest: "unilateral" },
+              { id: "w4_ohp", name: "DB Overhead Press (-25%)", target: "2×10", hasWeight: true, rest: "main" },
+              { id: "w4_pallof", name: "Pallof Press", target: "2×10/side", hasWeight: true, rest: "core" }
+            ]},
+            { name: "Monday", type: "cardio", title: "Easy Zone 2", exercises: [
+              { id: "w4_z2", name: "Zone 2 Cardio (easy)", target: "25 min", hasWeight: false, rest: "cardio" },
+            ]},
+            { name: "Tuesday", type: "strength", title: "Strength B (Light)", exercises: [
+              { id: "w4_rdl", name: "Romanian Deadlift (-25%)", target: "2×10", hasWeight: true, rest: "main" },
+              { id: "w4_pulldown", name: "Lat Pulldown / Pull-ups", target: "2×8", hasWeight: true, rest: "main" },
+              { id: "w4_slrdl", name: "Single-Leg RDL", target: "2×8/leg", hasWeight: true, rest: "unilateral" },
+              { id: "w4_row", name: "DB Row (-25%)", target: "2×10/arm", hasWeight: true, rest: "main" },
+              { id: "w4_deadbug", name: "Dead Bug", target: "2×8/side", hasWeight: false, rest: "core" }
+            ]},
+            { name: "Wednesday", type: "rest", title: "Active Recovery", exercises: [
+              { id: "w4_walk", name: "Easy Walk", target: "15 min", hasWeight: false, rest: "cardio" },
+              { id: "w4_foam", name: "Foam Rolling", target: "10 min", hasWeight: false, rest: "mobility" }
+            ]},
+            { name: "Thursday", type: "strength", title: "Strength C (Light)", exercises: [
+              { id: "w4_tgu", name: "Turkish Get-up (light)", target: "2×2/side", hasWeight: true, rest: "unilateral" },
+              { id: "w4_farmer", name: "Farmer's Carry (-25%)", target: "2×40 sec", hasWeight: true, rest: "carry" },
+              { id: "w4_stepup", name: "Step-ups (light)", target: "2×8/leg", hasWeight: true, rest: "unilateral" },
+              { id: "w4_facepull", name: "Face Pulls", target: "2×15", hasWeight: true, rest: "accessory" }
+            ]},
+            { name: "Friday", type: "cardio", title: "Easy Zone 2", exercises: [
+              { id: "w4_longz2", name: "Easy Walk / Light Bike", target: "30-40 min", hasWeight: false, rest: "cardio" }
+            ]},
+            { name: "Saturday", type: "rest", title: "Rest & Reflect", exercises: [] }
+          ]
+        }
+      };
+      
+      function loadData() {
+        const saved = localStorage.getItem('fitnessTrackerV3');
+        return saved ? JSON.parse(saved) : { exercises: {}, weights: {}, notes: {}, mobility: {}, metrics: { startWeight: '', endWeight: '', startDate: '' } };
+      }
+      
+      function saveData() {
+        localStorage.setItem('fitnessTrackerV3', JSON.stringify(data));
+        updateProgress();
+      }
+      
+      function toggleExercise(id) {
+        data.exercises[id] = !data.exercises[id];
+        saveData();
+        renderWeek(currentWeek);
+      }
+      
+      function toggleMobility(id) {
+        data.mobility[id] = !data.mobility[id];
+        saveData();
+        renderWeek(currentWeek);
+      }
+      
+      function updateWeight(id, value) {
+        data.weights[id] = value;
+        saveData();
+      }
+      
+      function updateNotes(dayId, value) {
+        data.notes[dayId] = value;
+        saveData();
+      }
+      
+      function updateMetric(key, value) {
+        data.metrics[key] = value;
+        saveData();
+      }
+      
+      function toggleDay(dayId) {
+        const card = document.getElementById(dayId);
+        card.classList.toggle('collapsed');
+      }
+      
+      function getDayProgress(day, weekNum, dayIdx) {
+        let total = day.exercises.length;
+        let done = day.exercises.filter(e => data.exercises[e.id]).length;
+        
+        if (day.name !== "Saturday") {
+          total += mobilityRoutine.length;
+          mobilityRoutine.forEach((m, i) => {
+            if (data.mobility[`w${weekNum}_day${dayIdx}_mob${i}`]) done++;
+          });
+        }
+        
+        return { done, total };
+      }
+      
+      function renderWeek(weekNum) {
+        if (weekNum === 5) {
+          renderStats();
+          return;
+        }
+        
+        const week = programData[weekNum];
+        let html = `<h2 style="color:#00d4ff;font-size:1.15em;margin-bottom:18px;font-weight:700;">${week.title}</h2>`;
+        
+        week.days.forEach((day, idx) => {
+          const dayId = `w${weekNum}_day${idx}`;
+          const progress = getDayProgress(day, weekNum, idx);
+          const progressText = progress.total > 0 ? `${progress.done}/${progress.total}` : '';
+          const cardClass = day.type === 'cardio' ? 'cardio-card' : day.type === 'rest' ? 'rest-card' : '';
+          
+          html += `
+            <div class="day-card ${cardClass}" id="${dayId}">
+              <div class="day-header" onclick="toggleDay('${dayId}')">
+                <span class="day-title">${day.name} — ${day.title}</span>
+                <div class="day-meta">
+                  <span class="day-progress">${progressText}</span>
+                  <span class="chevron">▼</span>
+                </div>
+              </div>
+              <div class="day-body">`;
+          
+          if (day.exercises.length === 0 && day.name === "Saturday") {
+            html += `<p style="color:#999;padding:12px 0;line-height:1.5;">Full rest day. Focus on sleep, nutrition, hydration. Mobility is optional today.</p>`;
+          } else if (day.exercises.length === 0) {
+            html += `<p style="color:#999;padding:12px 0;">Rest day focus.</p>`;
+          } else {
+            day.exercises.forEach(ex => {
+              const checked = data.exercises[ex.id] ? 'checked' : '';
+              const weight = data.weights[ex.id] || '';
+              const restTime = restTimes[ex.rest] || "60s";
+              html += `
+                <div class="exercise-row">
+                  <div class="exercise-check ${checked}" onclick="toggleExercise('${ex.id}')"></div>
+                  <div class="exercise-info">
+                    <div class="exercise-name">${ex.name}</div>
+                    <div class="exercise-target">${ex.target}</div>
+                    <div class="exercise-rest">⏱️ Rest: ${restTime}</div>
+                  </div>
+                  ${ex.hasWeight ? `<div class="exercise-inputs"><input type="number" placeholder="lbs" value="${weight}" onchange="updateWeight('${ex.id}', this.value)"></div>` : ''}
+                </div>`;
+            });
+          }
+          
+          if (day.name !== "Saturday") {
+            html += `
+              <div class="mobility-section">
+                <div class="mobility-header">🧘 Daily Mobility (10-15 min)</div>
+                <ul class="mobility-list">`;
+            mobilityRoutine.forEach((m, i) => {
+              const mobId = `w${weekNum}_day${idx}_mob${i}`;
+              const checked = data.mobility[mobId] ? 'checked' : '';
+              html += `<li class="mobility-item"><div class="exercise-check ${checked}" onclick="toggleMobility('${mobId}')"></div><span>${m}</span></li>`;
+            });
+            html += `</ul></div>`;
+          }
+          
+          const noteValue = data.notes[dayId] || '';
+          html += `<textarea class="notes-input" placeholder="Notes (RPE, energy, how you felt...)" onchange="updateNotes('${dayId}', this.value)">${noteValue}</textarea>`;
+          html += `</div></div>`;
+        });
+        
+        document.getElementById('mainContent').innerHTML = html;
+      }
+      
+      function renderStats() {
+        let totalExercises = 0;
+        let completedExercises = 0;
+        let totalMobility = 0;
+        let completedMobility = 0;
+        
+        for (let w = 1; w <= 4; w++) {
+          programData[w].days.forEach((day, idx) => {
+            totalExercises += day.exercises.length;
+            completedExercises += day.exercises.filter(e => data.exercises[e.id]).length;
+            
+            if (day.name !== "Saturday") {
+              totalMobility += mobilityRoutine.length;
+              mobilityRoutine.forEach((m, i) => {
+                if (data.mobility[`w${w}_day${idx}_mob${i}`]) completedMobility++;
+              });
+            }
+          });
+        }
+        
+        const totalAll = totalExercises + totalMobility;
+        const completedAll = completedExercises + completedMobility;
+        const percent = totalAll > 0 ? Math.round((completedAll / totalAll) * 100) : 0;
+        const mobilityPercent = totalMobility > 0 ? Math.round((completedMobility / totalMobility) * 100) : 0;
+        
+        let html = `
+          <h2 style="color:#00d4ff;font-size:1.15em;margin-bottom:18px;font-weight:700;">📊 Your Progress</h2>
+          
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value">${percent}%</div>
+              <div class="stat-label">Overall Complete</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${completedExercises}</div>
+              <div class="stat-label">Workouts Done</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${mobilityPercent}%</div>
+              <div class="stat-label">Mobility Complete</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${completedMobility}</div>
+              <div class="stat-label">Mobility Sessions</div>
+            </div>
+          </div>
+          
+          <div class="summary-section">
+            <div class="summary-title">📏 Body Metrics</div>
+            <div class="weight-tracker">
+              <div class="weight-row">
+                <span style="font-weight:600;">Start Weight</span>
+                <input type="number" placeholder="lbs" value="${data.metrics.startWeight || ''}" onchange="updateMetric('startWeight', this.value)">
+              </div>
+              <div class="weight-row">
+                <span style="font-weight:600;">End Weight</span>
+                <input type="number" placeholder="lbs" value="${data.metrics.endWeight || ''}" onchange="updateMetric('endWeight', this.value)">
+              </div>
+            </div>
+          </div>
+          
+          <div class="summary-section">
+            <div class="summary-title">🏋️ Strength Progress</div>
+            <div class="weight-tracker">`;
+        
+        const keyLifts = [
+          { name: 'Goblet Squat', w1: 'w1_goblet', w3: 'w3_goblet' },
+          { name: 'Romanian Deadlift', w1: 'w1_rdl', w3: 'w3_rdl' },
+          { name: 'DB Overhead Press', w1: 'w1_ohp', w3: 'w3_ohp' },
+          { name: 'DB Row', w1: 'w1_row', w3: 'w3_row' },
+          { name: "Farmer's Carry", w1: 'w1_farmer', w3: 'w3_farmer' }
+        ];
+        
+        keyLifts.forEach(lift => {
+          const w1 = data.weights[lift.w1] || '-';
+          const w3 = data.weights[lift.w3] || '-';
+          const change = (data.weights[lift.w1] && data.weights[lift.w3]) ? 
+            `<span style="color:#00ff88;">(+${data.weights[lift.w3] - data.weights[lift.w1]} lbs)</span>` : '';
+          html += `
+            <div class="weight-row">
+              <span style="font-size:0.9em;font-weight:600;">${lift.name}</span>
+              <span style="color:#00d4ff;font-size:0.85em;">${w1} → ${w3} ${change}</span>
+            </div>`;
+        });
+        
+        html += `</div></div>
+          <button class="btn btn-primary btn-block" onclick="showExport()">📤 Export for Next Phase</button>`;
+        
+        document.getElementById('mainContent').innerHTML = html;
+      }
+      
+      function showWeek(num) {
+        currentWeek = num;
+        document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === num - 1));
+        document.getElementById('currentWeekBadge').textContent = num === 5 ? 'Stats' : `Week ${num}`;
+        renderWeek(num);
+        document.querySelectorAll('.nav-item').forEach((n, i) => n.classList.toggle('active', i === 0));
+      }
+      
+      function showStats() {
+        showWeek(5);
+        document.querySelectorAll('.nav-item').forEach((n, i) => n.classList.toggle('active', i === 1));
+      }
+      
+      function updateProgress() {
+        let total = 0, completed = 0;
+        for (let w = 1; w <= 4; w++) {
+          programData[w].days.forEach((day, idx) => {
+            total += day.exercises.length;
+            completed += day.exercises.filter(e => data.exercises[e.id]).length;
+            if (day.name !== "Saturday") {
+              total += mobilityRoutine.length;
+              mobilityRoutine.forEach((m, i) => {
+                if (data.mobility[`w${w}_day${idx}_mob${i}`]) completed++;
+              });
+            }
+          });
+        }
+        const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+        document.getElementById('totalProgress').style.width = percent + '%';
+        document.getElementById('completedCount').textContent = `${completed} of ${total} items`;
+        document.getElementById('progressPercent').textContent = percent + '%';
+      }
+      
+      function showExport() {
+        const exportData = {
+          program: "4-Week Functional Fitness - Phase 1",
+          exportDate: new Date().toISOString().split('T')[0],
+          metrics: data.metrics,
+          completionRate: calculateCompletion(),
+          mobilityCompletion: calculateMobilityCompletion(),
+          strengthProgress: getStrengthProgress(),
+          notes: data.notes,
+          allWeights: data.weights
+        };
+        
+        document.getElementById('exportData').textContent = JSON.stringify(exportData, null, 2);
+        document.getElementById('exportModal').classList.add('active');
+        document.querySelectorAll('.nav-item').forEach((n, i) => n.classList.toggle('active', i === 2));
+      }
+      
+      function calculateCompletion() {
+        let total = 0, completed = 0;
+        for (let w = 1; w <= 4; w++) {
+          programData[w].days.forEach(day => {
+            total += day.exercises.length;
+            completed += day.exercises.filter(e => data.exercises[e.id]).length;
+          });
+        }
+        return { completed, total, percent: total > 0 ? Math.round((completed/total)*100) : 0 };
+      }
+      
+      function calculateMobilityCompletion() {
+        let total = 0, completed = 0;
+        for (let w = 1; w <= 4; w++) {
+          programData[w].days.forEach((day, idx) => {
+            if (day.name !== "Saturday") {
+              total += mobilityRoutine.length;
+              mobilityRoutine.forEach((m, i) => {
+                if (data.mobility[`w${w}_day${idx}_mob${i}`]) completed++;
+              });
+            }
+          });
+        }
+        return { completed, total, percent: total > 0 ? Math.round((completed/total)*100) : 0 };
+      }
+      
+      function getStrengthProgress() {
+        return {
+          gobletSquat: { week1: data.weights['w1_goblet'] || null, week3: data.weights['w3_goblet'] || null },
+          romanianDeadlift: { week1: data.weights['w1_rdl'] || null, week3: data.weights['w3_rdl'] || null },
+          overheadPress: { week1: data.weights['w1_ohp'] || null, week3: data.weights['w3_ohp'] || null },
+          dbRow: { week1: data.weights['w1_row'] || null, week3: data.weights['w3_row'] || null },
+          farmerCarry: { week1: data.weights['w1_farmer'] || null, week3: data.weights['w3_farmer'] || null }
+        };
+      }
+      
+      function copyExport() {
+        const text = document.getElementById('exportData').textContent;
+        navigator.clipboard.writeText(text).then(() => {
+          alert('✅ Copied! Paste this in our chat to get your next 4-week program.');
+        });
+      }
+      
+      function shareExport() {
+        const text = document.getElementById('exportData').textContent;
+        if (navigator.share) {
+          navigator.share({ title: 'My Fitness Progress', text: text });
+        } else {
+          copyExport();
+        }
+      }
+      
+      function closeModal(id) {
+        document.getElementById(id).classList.remove('active');
+      }
+      
+      function showSettings() {
+        document.getElementById('startDate').value = data.metrics.startDate || '';
+        document.getElementById('settingsModal').classList.add('active');
+        document.querySelectorAll('.nav-item').forEach((n, i) => n.classList.toggle('active', i === 3));
+      }
+      
+      function resetProgress() {
+        if (confirm('⚠️ Are you sure? This will delete ALL your progress!')) {
+          localStorage.removeItem('fitnessTrackerV3');
+          data = { exercises: {}, weights: {}, notes: {}, mobility: {}, metrics: {} };
+          renderWeek(1);
+          updateProgress();
+          closeModal('settingsModal');
+        }
+      }
+      
+      document.getElementById('startDate').addEventListener('change', function() {
+        updateMetric('startDate', this.value);
+      });
+      
+      renderWeek(1);
+      updateProgress();
+    </script>
+</body>
+</html>
